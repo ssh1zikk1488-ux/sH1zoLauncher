@@ -1,26 +1,11 @@
-name: Build sH1zoLauncher APK
-on:
-  workflow_dispatch:
-  push:
-permissions:
-  contents: read
+name: Build APK
+on: [push, workflow_dispatch]
 jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Find project
-        id: p
-        run: |
-          ZIP=$(ls *fixed*.zip 2>/dev/null | head -n1 || true)
-          if [ -z "$ZIP" ]; then ZIP=$(ls *.zip 2>/dev/null | head -n1 || true); fi
-          if [ -n "$ZIP" ]; then
-            echo "Using $ZIP"
-            mkdir proj && unzip -q "$ZIP" -d proj
-            echo "dir=proj" >> "$GITHUB_OUTPUT"
-          else
-            echo "dir=." >> "$GITHUB_OUTPUT"
-          fi
+      - run: mkdir proj && unzip -q "$(ls *.zip | head -n1)" -d proj
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -28,4 +13,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
-      - name: Accept Android licenses
+      - run: cd proj && gradle assembleDebug --no-daemon -Pkotlin.jvm.target.validation.mode=warning
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: proj/app/build/outputs/apk/debug/app-debug.apk
