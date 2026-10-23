@@ -29,25 +29,3 @@ jobs:
         with:
           gradle-version: '8.10.2'
       - name: Accept Android licenses
-        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
-      - name: Build debug APK
-        working-directory: ${{ steps.p.outputs.dir }}
-        shell: bash {0}
-        run: |
-          gradle assembleDebug --no-daemon --console=plain -Dorg.gradle.jvmargs=-Xmx4g 2>&1 | tee build.log
-          CODE=${PIPESTATUS[0]}
-          if [ "$CODE" -ne 0 ]; then
-            {
-              echo "## Build failed"
-              echo '```'
-              grep -n -E "^e: |What went wrong|Execution failed|error:|Could not|OutOfMemory|licen" build.log | head -n 40
-              echo '--- tail ---'
-              tail -n 40 build.log
-              echo '```'
-            } >> "$GITHUB_STEP_SUMMARY"
-          fi
-          exit $CODE
-      - uses: actions/upload-artifact@v4
-        with:
-          name: sH1zoLauncher-debug-apk
-          path: ${{ steps.p.outputs.dir }}/app/build/outputs/apk/debug/app-debug.apk
