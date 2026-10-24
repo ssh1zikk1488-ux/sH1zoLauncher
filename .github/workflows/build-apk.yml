@@ -1,5 +1,10 @@
 name: Build APK
-on: [push, workflow_dispatch]
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -13,8 +18,17 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
-      - run: cd proj && gradle assembleDebug --no-daemon -Pkotlin.jvm.target.validation.mode=warning
-      - uses: actions/upload-artifact@v4
-        with:
-          name: apk
-          path: proj/app/build/outputs/apk/debug/app-debug.apk
+      - run: cd proj && gradle assembleDebug --no-daemon -Pkotlin.jvm.target.validation.mode=warning 2>&1 | tee build.log
+      - name: Show errors
+        if: failure()
+        run: |
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          grep -E "^e: |What went wrong" -A3 proj/build.log | head -40 >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish APK to Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest proj/app/build/outputs/apk/debug/app-debug.apk --title "Latest build" --notes "Debug APK" --target "$GITHUB_SHA"
